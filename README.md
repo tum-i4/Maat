@@ -1,8 +1,7 @@
 # Maat 
 
-|                          |                          |  
-:-------------------------:|:-------------------------:
-Maat is a framework that mines VirusTotal scan reports to extract various information about the correctness, completeness, and consistency of scanners. It can also be used to train threshold-based and ML-based labeling strategies to label (Android) apps according to their VirusTotal scan reports and much more. Maat also refers to the ancient Egyptian concepts of truth, balance, order, harmony.  |  ![Maat Icon](https://github.com/tum-i22/Maat/blob/master/icons/maat_512.png "Maat")
+| Maat is a framework that mines VirusTotal scan reports to extract various information about the correctness, completeness, and consistency of scanners. It can also be used to train threshold-based and ML-based labeling strategies to label (Android) apps according to their VirusTotal scan reports that rival conventional, unsustainable threshold-based labeling strategies that are widely adopted by researchers. Maat also refers to the ancient Egyptian concepts of truth, balance, order, and harmony. | ![Maat](https://github.com/tum-i22/Maat/blob/master/icons/maat.png "Maat") |
+|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------:|
 
 ## Dependencies
 The current implementation depends on the following tools:
@@ -268,7 +267,7 @@ The ```SHA1``` hashes, a short description, and the ```VirusTotal``` __positives
 
 ### [BitDefender and Panda on VirusTotal versus Reality](#AMDSample)
 
-The ```SHA1``` hashes of ten apps randomly sampled from the [AMD](http://amd.arguslab.org/) dataset, the number of scanners deeming them as malicious as of October 10th, 2019, their malware types, and whether ```BitDefender```'s version 3.3.063 and ```Panda```'s version 3.4.5 managed to detect them.
+The ```SHA1``` hashes of ten apps randomly sampled from the [AMD](http://amd.arguslab.org/) dataset, the number of scanners deeming them as malicious as of October 10th, 2019, their malware types, and whether ```BitDefender```'s version 3.3.063 and ```Panda```'s version 3.4.5 managed to detect (:heavy_check_mark:) them.
 
 | ```SHA1``` Hash | ```Virustotal``` __positives__ | Malware Type | ```BitDefender``` | ```Panda``` |
 | ------------- | ------------- | ------------- | ------------- | ------------- |
