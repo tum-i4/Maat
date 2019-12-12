@@ -14,7 +14,7 @@ The current implementation depends on the following tools:
 * [plotly](https://plot.ly/python/): Used to generate more interactive plots.
 * Any other libraries imported by Maat utils (e.g., data.py), are __currently not used by Maat__ and can be commented out. Those include *networkx*, *skimage*, *imutils*, *cv2*, and *alignment*.
 
-## Features 
+## Extracted Features 
 ### [Static Features](#StaticFeatures)
 
 The following list enumerates the numerical features statically extracted from the APK archives of Android apps with the help of androguard's python API. These features (total 40) are primarily used to train ML-based detection methods. Features are grouped by their types (i.e., basic features, permission-based features, API call features, etc.). The order of features in the list mimics the order of every feature in the feature vector. 
@@ -109,6 +109,17 @@ The following list enumerates the selected naive features, viz. the verdicts of 
 * ```Sophos```
 * ```SymantecMobileInsight```
 * ```Trustlook```
+
+## Maat's Hyperparameter Estimation
+
+To train the best-performing random forests that constitute the ML-based labeling strategies, Maat uses the techniques of [grid search](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html) and [random(ized) search](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.RandomizedSearchCV.html) to estimate the hyperparameters of the decision trees in those forests. We used 10-Fold Cross Validation to train random forests of 100 decision trees and varied the following parameters as follows:
+
+* The criterion used to choose the feature to test to futher split the training dataset into malicious and benign apps ```criterion```: {gini, entropy}.
+* The maximum depth a decision tree is allowed to grow ```max_depth```: {1, 4, 10, None}.
+* The maximum number of features a decision tree is allowed to check upon every split ```max_features```: {3, 5, 10, None}.
+* The minimum number of samples required to split a node in a tree ```min_samples_split```: {2, 3, 10}.
+* If False, the entire dataset is used to train the decision tree instead of bootstrap samples ```bootstrap```: {True, False}
+
 
 ## User Manual 
 
