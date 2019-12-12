@@ -14,58 +14,23 @@ The current implementation depends on the following tools:
 * [plotly](https://plot.ly/python/): Used to generate more interactive plots.
 * Any other libraries imported by Maat utils (e.g., data.py), are __currently not used by Maat__ and can be commented out. Those include *networkx*, *skimage*, *imutils*, *cv2*, and *alignment*.
 
-## Features 
-### [Static Features](#StaticFeatures)
+## Maat's ML-based Labeling Strategies
 
-The following list enumerates the numerical features statically extracted from the APK archives of Android apps with the help of androguard's python API. These features (total 40) are primarily used to train ML-based detection methods. Features are grouped by their types (i.e., basic features, permission-based features, API call features, etc.). The order of features in the list mimics the order of every feature in the feature vector. 
+Maat, mines VirusTotal scan reports to build ML-based labeling strategies. As seen in figure above, Maat starts by
+analyzing the VirusTotal scan reports of apps in the training dataset that were reanalyzed and downloaded at different points in time (i.e., t<sub>0</sub> , t<sub>1</sub> ,..., t<sub>m</sub>). In phase (1) we designate the VirusTotal scanners that achieve an average overall correctness rate of at least 0.90 between (**t<sub>0</sub>**) and September (**t<sub>m</sub>**) as the most correct scanners. Maat also finds the scanners that changed their verdicts at most 10% of the time (i.e., were stable 90% of the time), are considered. The output of this phase is an intersection of the most correct and stable VirusTotal scanners.
 
-* Basic features:
-  * Minimum SDK version supported by the app.
-  * Maximum SDK version supported by the app.
-  * Total number of activities in the app.
-  * Total number of services in the app.
-  * Total number of broadcast receivers in the app.
-  * Total number of content providers in the app.
-* Permission-based features:
-  * Total number of requested permissions.
-  * Ratio of Android permissions to total permissions.
-  * Ratio of custom permissions to total permissions.
-  * Ratio of dangerous permissions to total permissions.
-* API call features:
-  * Total number of classes in ```classes.dex```. 
-  * Total number of methods in ```classes.dex```.
-  * Counts of calls to methods in the following packages:
-    * ```android.accounts.AccountManager```
-    * ```android.app.Activity```
-    * ```android.app.DownloadManager```
-    * ```android.app.IntentService```
-    * ```android.content.ContentResolver```
-    * ```android.contentContextWrapper```
-    * ```android.content.pm.PackageInstaller```
-    * ```android.database.sqlite.SQLiteDatabase```
-    * ```android.hardware.Camera```
-    * ```android.hardware.display.DisplayManager```
-    * ```android.location.Location```
-    * ```android.media.AudioRecord```
-    * ```android.media.MediaRecorder```
-    * ```android.net.Network```
-    * ```android.net.NetworkInfo```
-    * ```android.net.wifi.WifiInto```
-    * ```android.net.wifi.WifiManager```
-    * ```android.os.PowerManager```
-    * ```android.os.Process```
-    * ```android.telephony.SmsManager```
-    * ```android.widget.Toast```
-    * ```dalvik.system.DexClassLoader```
-    * ```dalvik.system.PathClassLoader```
-    * ```java.lang.class```
-    * ```java.lang.reflect.Method```
-    * ```java.net.HttpCookie```
-    * ```java.net.URL.openConnection```
-* Miscellaneous features:
-  * Zero-based index of the compiler used to compile the app from the list of (```dx```, ```dexmerge```, ```dexlib 1.x```, ```dexlib 2.x```, ```Jack 4.x```, or unknown)
+In phase (2), we extract features from the VirusTotal scan reports of apps in the training dataset. There are two types of features we extract from the reports, namely engineered features and naive features. Engineered features attempt to leverage the insights we gained from the previous sections (e.g., which scanners are correct). So, based on the output from phase (1), we consider the verdicts given to apps in the training dataset only by the set of most correct and stable scanners. To accommodate the impact of time on the maturity of an app’s scan report, we also include the age of a scan report in years, the number of times an app has been submitted for (re)analysis (i.e., times_submitted), the positives attribute, and the total attribute in this feature set. Lastly, to capture any patterns that Android (malicious) apps share in terms of functionalities and runtime behaviors, we extract from the VirusTotal scan reports the permissions that apps request in their ```AndroidManifest.xml``` files, and the tags given to them by VirusTotal (e.g., *checks-gps*, *contains-elf*, *sends-sms*, etc.). 
 
-### [VirusTotal Engineered Features](#EngineeredFeatures)
+Naive features do not consider the outputs of phase (1). With naive features, we consider the verdicts given by **all** VirusTotal scanners to the apps in the training dataset. So, the feature vector extracted from a VirusTotal scan report will be a sequence of integers depicting the label given by each scanner to an app (i.e., -1 for not scanned, 0 for scanned and deemed benign, and 1 for scanned and deemed malicious). For example, assume that the scan report of an arbitrary app (![equation](http://www.sciweavers.org/tex2img.php?eq=\alpha&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=)) contained scan results of three scanners, that respectively deemed (![equation](http://www.sciweavers.org/tex2img.php?eq=\alpha&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=)) as malicious, malicious, and benign, the feature vector depicting this scan report will be (x<sub>![equation](http://www.sciweavers.org/tex2img.php?eq=\alpha&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=)</sub> = (1, 1, 0)). With naive features, we allow ML-based labeling strategies to utilize the verdicts of all VirusTotal freely scanners regardless of their correctness or stability.
+
+Phase (3) is an optional phase that selects the most informative features extracted from the training dataset's scan
+reports. To avoid having to choose the number of features to select arbitrarily, we utilize the [SelectFromModel](https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.SelectFromModel.html) technique to select the most informative features automatically. In essence, this technique selects features based on the importance given to them by a model (e.g., logistic regression, support vector machines, decision trees, etc.). For example, during training, decision trees iteratively utilize a criterion (e.g., Gini index), to decide upon the next feature to consider in splitting data points into two, or more, classes; in our case, this feature could be a scanner's verdict regarding the label of an app. Ultimately, the trained tree will compile a set of features that it used during splitting and assign an importance value to each one of them. The SelectFromModel feature selection technique uses such importance values and returns the user those features with importance values more than a preset threshold (i.e., 1x10<sup>-5</sup> in the case of decision trees). For our experiments, we rely on decision trees as the model used by the SelectFromModel technique to extract the most informative features.
+
+We envision the process of utilizing the features extracted from VirusTotal scan reports to label apps as a series or combination of questions, such as how many scanners deem the app malicious? how old is the app? does a renowned scanner (e.g., AVG) deem the app as malicious? The machine learning classifier that mimics this model, we reckon, is a decision tree. In order not to rely on the decisions made by a single tree, Maat trains ML-based labeling strategy as a collection of trees or a random forest. To estimate the hyperparameters (e.g., the maximum depth each tree is allowed to grow), that train the most effective forests, we use the techniques of [grid search](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html) and [random(ized) search](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.RandomizedSearchCV.html) to select from among a set of parameters below. In our experiments, we compare the performance of random forests trained using both search techniques.
+
+The output of phase (4) is a random forest that takes a vector of numerical features extracted from an app's VirusTotal scan report and returns a label depicting the class of the app (i.e., 1.0 for malicious and 0.0 for benign). Effectively, this random forest is a labeling strategy. In phase (5), given the VirusTotal scan report of an arbitrary Android app, the report is represented as a feature vector that matches the features used by the random forest (e.g., naive versus engineered features), and is used to predict the app's class.
+
+### [Maat's Engineered Features](#EngineeredFeatures)
 
 The following list enumerates the engineered features extracted from the ```VirusTotal``` scan reports of apps in our training dataset. The order of features in the list mimics the order of every feature in the feature vector.
 
@@ -88,7 +53,7 @@ The following list enumerates the engineered features extracted from the ```Viru
 * The list of permissions requested by the app out of 324 permissions. If a permissions is requested by an app, its corresponding index in the feature vector has a value of 1, and a value of 0 otherwise.
 * The list of tags given by ```VirusTotal``` to the app out of 32 tags. If a tag is given to an app, its corresponding index in the feature vector has a value of 1, and a value of 0 otherwise. Examples of tags: ```contains-elf```, ```contains-pe```, ```xor```, and so on.
 
-### [VirusTotal Selected Naive Features](#NaiveFeatures)
+### [Maat's Selected Naive Features](#NaiveFeatures)
 
 The following list enumerates the selected naive features, viz. the verdicts of ```VirusTotal``` scanners that train the best performing ML-based labeling strategies. The order of features in the list mimics the order of every feature in the feature vector.
 
@@ -109,6 +74,17 @@ The following list enumerates the selected naive features, viz. the verdicts of 
 * ```Sophos```
 * ```SymantecMobileInsight```
 * ```Trustlook```
+
+## [Maat's Hyperparameter Estimation](#HyperparameterEstimation)
+
+To train the best-performing random forests that constitute the ML-based labeling strategies, Maat uses the techniques of grid search and random(ized) search to estimate the hyperparameters of the decision trees in those forests. We used 10-Fold Cross Validation to train random forests of 100 decision trees and varied the following parameters as follows:
+
+* The criterion used to choose the feature to test to futher split the training dataset into malicious and benign apps ```criterion```: {gini, entropy}.
+* The maximum depth a decision tree is allowed to grow ```max_depth```: {1, 4, 10, None}.
+* The maximum number of features a decision tree is allowed to check upon every split ```max_features```: {3, 5, 10, None}.
+* The minimum number of samples required to split a node in a tree ```min_samples_split```: {2, 3, 10}.
+* If False, the entire dataset is used to train the decision tree instead of bootstrap samples ```bootstrap```: {True, False}
+
 
 ## User Manual 
 
@@ -220,6 +196,55 @@ Using the same tool, one can use pre-trained ML-based labeling strategies to lab
 ```
 python maat_tool.py --task advanced_experiments --trainingdatasetdir ../data/feature_vectors/androzoo_2019/static/ --vtreportsdirs ../data/vt_reports_201* --testdatasetdir ../data/feature_vectors/sampled_AndroZoo/static/ --testvtreportsdir ../data/vt_reports_2019-07-05/ --testgroundtruth ../data/app_apk/sampled_AndroZoo/labels.csv --fileext static --savedlabeler sampled_forest_gridsearch_naive_full.txt --trainingclassifier FOREST-25
 ```
+### [Static Features](#StaticFeatures)
+
+The following list enumerates the numerical features statically extracted from the APK archives of Android apps with the help of androguard's python API. These features (total 40) are primarily used to train ML-based detection methods. Features are grouped by their types (i.e., basic features, permission-based features, API call features, etc.). The order of features in the list mimics the order of every feature in the feature vector. 
+
+* Basic features:
+  * Minimum SDK version supported by the app.
+  * Maximum SDK version supported by the app.
+  * Total number of activities in the app.
+  * Total number of services in the app.
+  * Total number of broadcast receivers in the app.
+  * Total number of content providers in the app.
+* Permission-based features:
+  * Total number of requested permissions.
+  * Ratio of Android permissions to total permissions.
+  * Ratio of custom permissions to total permissions.
+  * Ratio of dangerous permissions to total permissions.
+* API call features:
+  * Total number of classes in ```classes.dex```. 
+  * Total number of methods in ```classes.dex```.
+  * Counts of calls to methods in the following packages:
+    * ```android.accounts.AccountManager```
+    * ```android.app.Activity```
+    * ```android.app.DownloadManager```
+    * ```android.app.IntentService```
+    * ```android.content.ContentResolver```
+    * ```android.contentContextWrapper```
+    * ```android.content.pm.PackageInstaller```
+    * ```android.database.sqlite.SQLiteDatabase```
+    * ```android.hardware.Camera```
+    * ```android.hardware.display.DisplayManager```
+    * ```android.location.Location```
+    * ```android.media.AudioRecord```
+    * ```android.media.MediaRecorder```
+    * ```android.net.Network```
+    * ```android.net.NetworkInfo```
+    * ```android.net.wifi.WifiInto```
+    * ```android.net.wifi.WifiManager```
+    * ```android.os.PowerManager```
+    * ```android.os.Process```
+    * ```android.telephony.SmsManager```
+    * ```android.widget.Toast```
+    * ```dalvik.system.DexClassLoader```
+    * ```dalvik.system.PathClassLoader```
+    * ```java.lang.class```
+    * ```java.lang.reflect.Method```
+    * ```java.net.HttpCookie```
+    * ```java.net.URL.openConnection```
+* Miscellaneous features:
+  * Zero-based index of the compiler used to compile the app from the list of (```dx```, ```dexmerge```, ```dexlib 1.x```, ```dexlib 2.x```, ```Jack 4.x```, or unknown)
 
 ## Miscellaneous
 
