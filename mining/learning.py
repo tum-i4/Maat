@@ -259,7 +259,7 @@ def labelAppsUsingModel(X, y, testDatasetDir, testVTReportsDir, featureNames, gr
                 param_grid = {"n_neighbors": [1, 3, 5, 11, 51, 101, 501, 1001], "weights": ["uniform", "distance"], "p": [1, 2, 3]}
             else:
                 features = [3, 5, 10, None]#range(1, len(X[0])+1, 2) + [None]
-                param_grid = {"criterion": ["gini", "entropy"], "max_depth": [3, 5, 10, None], "max_features": features, "min_samples_split": [2, 3, 10], "bootstrap": [True, False]}
+                param_grid = {"criterion": ["gini", "entropy"], "max_depth": [1, 4, 10, None], "max_features": features, "min_samples_split": [2, 3, 10], "bootstrap": [True, False]}
             # Commence the GridSearch
             grid_search = GridSearchCV(clf, param_grid=param_grid, cv=10, iid=False)
             grid_search.fit(X, y)
@@ -274,7 +274,7 @@ def labelAppsUsingModel(X, y, testDatasetDir, testVTReportsDir, featureNames, gr
                 param_dist = {"n_neighbors": [1, 3, 5, 11, 51, 101, 501, 1001], "weights": ["uniform", "distance"], "p": [1, 2, 3]}
             else:
                 features = [3, 5, 10, None]#range(1, len(X[0])+1, 2) + [None]
-                param_dist = {"criterion": ["gini", "entropy"], "max_depth": [3, 5, 10, None], "max_features": features, "min_samples_split": [2, 3, 10], "bootstrap": [True, False]}
+                param_dist = {"criterion": ["gini", "entropy"], "max_depth": [1, 4, 10, None], "max_features": features, "min_samples_split": [2, 3, 10], "bootstrap": [True, False]}
 
             # Commence the RandomSearch
             if usedClassifier == "bayes":

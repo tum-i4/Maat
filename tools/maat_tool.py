@@ -123,6 +123,7 @@ def main():
             # Sort the VirusTotal dirs
             vtDirs = arguments.vtreportsdirs
             vtDirs.sort()
+            print vtDirs
             trainingApps = glob.glob("%s/*.%s" % (arguments.trainingdatasetdir, arguments.fileext))
             if len(trainingApps) < 1:
                 prettyPrint("Could not load feature vectors with extention \".%s\" from \"%s\"" % (arguments.fileext, arguments.trainingdatasetdir), "error")
@@ -138,7 +139,7 @@ def main():
             features = all_scanners if arguments.savedlabeler.find("naive_full") != -1 else eval(open(arguments.savedlabeler.replace(".txt", "_features.txt")).read())
 
             X, X_vt50p1 = [], []
-            y, y_vt1, y_vt4, y_vt10, y_vt50p, y_vt50p1, y_drebin = [], [], [], [], [], [], []
+            y, y_vt1, y_vt3, y_vt4, y_vt10, y_vt50p, y_vt50p1, y_drebin = [], [], [], [], [], [], [], []
             prettyPrint("Extracting features from the training dataset's VirusTotal reports")
             for app in trainingApps:
                 key = app[app.rfind("/")+1:].replace(".%s" % arguments.fileext, "")
@@ -189,6 +190,9 @@ def main():
                     # vt >= 1
                     label = 1.0 if report["positives"] >= 1 else 0.0
                     y_vt1.append(label)
+                    # vt >= 3
+                    label = 1.0 if report["positives"] >= 3 else 0.0
+                    y_vt3.append(label)
                     # vt >= 4
                     label = 1.0 if report["positives"] >= 4 else 0.0
                     y_vt4.append(label)
@@ -247,8 +251,11 @@ def main():
                 clf = SVC(random_state=0, gamma='auto')
             elif arguments.trainingclassifier.find("DREBIN") != -1:
                 clf = LinearSVC(random_state=0) 
-            else:
+            elif arguments.trainingclassifier.find("GNB") != -1:
                 clf = GaussianNB()
+            else:
+                prettyPrint("Classifier \"%s\" not supported. Exiting" % arguments.trainingclassifier, "error")
+                return False
             
             if VERBOSE == "ON":
                 prettyPrint("Fitting model")
@@ -265,6 +272,11 @@ def main():
             p = clf.predict(Xtest)
             metrics = calculateMetrics(ytest, p)
             prettyPrint("Using vt >= 1: MCC = %s, Recall = %s, Specificity = %s" % (metrics["mcc"], metrics["recall"], metrics["specificity"]), "output")
+
+            clf.fit(X, y_vt3) # vt >= 3
+            p = clf.predict(Xtest)
+            metrics = calculateMetrics(ytest, p)
+            prettyPrint("Using vt >= 3: MCC = %s, Recall = %s, Specificity = %s" % (metrics["mcc"], metrics["recall"], metrics["specificity"]), "output")
 
             clf.fit(X, y_vt4) # vt >= 4
             p = clf.predict(Xtest)

@@ -376,8 +376,8 @@ def getCorrectnessOverTime(datasetDir, vtReportsDirs, groundTruth, generateLineP
 def getMostCorrectScannersOverTime(datasetDir, vtReportsDirs, groundTruth, averageCorrectness=0.9, generateLinePlot=False, plotScanners=[]):
     """
     Calculates the correctness of all VirusTotal scanners over a period of time
-    :param datasetDir: The directory containing the APK archives of the dataset
-    :type datasetDir: str
+    :param datasetDir: The directory containing the APK archives of the dataset or the list of APK archives
+    :type datasetDir: str or list
     :param vtReportsDirs: The directories containing the VirusTotal reports (Should have any trace of date in the name e.g., vt_reports_2015)
     :type vtReportsDirs: list (OR) str
     :param groundTruth: The ground truth to compare the scanners' verdict against

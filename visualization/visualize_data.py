@@ -10,6 +10,8 @@ from sklearn.decomposition import PCA
 from scipy.cluster.hierarchy import dendrogram
 
 from matplotlib import pyplot as plt
+from matplotlib import rcParams, rc
+import matplotlib.font_manager as font_manager
 import plotly.plotly as py
 from plotly.offline import plot, iplot
 from plotly.graph_objs import *
@@ -50,80 +52,118 @@ def plotDendrogram(model):
 
     return True
 
-def reduceAndVisualize(X, y, dim=2, reductionAlgorithm="tsne", figSize=(1024,1024), figTitle="Data visualization", appNames=[], customLabels=("label1", "label2")):
+def reduceAndVisualizeMultiple(vectorsDirs, classNames, classMarkers, classColors, classOpacity, targetDim=2, reductionAlgorithm="tsne", fileExt="static", figSize=(1024,1024), figTitle="Data visualization", latexStyle=True, saveFig=True):
     """
-    Generates a scatter plot using "plotly" after projecting the data points into <dim>-dimensionality using tSNE or PCA
-    :param X: The matrix containing the feature vectors
-    :type X: list
-    :param y: The labels of the feature vectors
-    :type y: list
-    :param dim: The target dimensionality to project the feature vectors to (default=2)
-    :type dim: int
+    Generates a scatter plot after projecting the data points tSNE or PCA
+    :param vectorsDirs: The directories containing the feature vectors to visualize or the feature vectors themselves
+    :type vectorsDirs: list
+    :param classNames: The names of classes for each directory of feature vectors (used in legend)
+    :type classNames: list of str
+    :param classMarkers: The markers to assign to the visualized vectors in each directory
+    :type classMarkers: list of str
+    :param classColors: The colors to assign to the visualized vectors in each directory
+    :type classColors: list of str
+    :param classOpacity: The opacity of data points in each class (for customized illustrations)
+    :type classOpacity: list of float
+    :param targetDim: The target dimensionality to project the feature vectors to (default=2)
+    :type targetDiim: int
     :param reductionAlgorithm: The algorithm to use for dimensionality reduction
     :type reductionAlgorithm: str
+    :param fileExt: The extension of files containing the feature vectors to visualize (default: .static)
+    :type fileExt: str
     :param figSize: The size of the figure
     :type figSize: tuple (of ints)
     :param figTitle: The title of the figure and the name of the resulting HTML file
     :type figTitle: str
-    :param appNames: The names of apps to be used as tooltips for each data point. Assumed to match one-to-one with the feature vectors in X
-    :type appNames: list of str
-    :param customLabels: The labels two use for the two visualized classes
-    :type customLabels: tuple of str
-    :return: A bool depicting the success/failure of the operaiton
+    :param latexStyle: Whether to use the fonts of LaTeX (default: True)
+    :type latexStyle: boolean
+    :param saveFig: Whether to save the generated scatter plot (default: True)
+    :type saveFig: boolean
+    :return: A boolean depicting the success/failure of the operaiton
     """
     try:
-        # Prepare data
-        X, y = np.array(X), np.array(y)
-        # Build model
-        reductionModel = TSNE(n_components=dim) if reductionAlgorithm == "tsne" else PCA(n_components=dim)
-        # Apply transformation
-        prettyPrint("Projecting %s feature vectors of dimensionality %s into %s-d" % (X.shape[0], X.shape[1], dim))
-        X_new = reductionModel.fit_transform(X)
-        # Generate a scatter plot
-        prettyPrint("Populating the traces for malware and goodware")
-        # Create traces for the scatter plot 
-        prettyPrint("Creating a scatter plot")
+       # Sanity checks
+       if not (len(vectorsDirs) == len(classNames) == len(classMarkers) == len(classColors) == len(classOpacity)):
+           prettyPrint("The dimensionality of directories, names, markers, and colors does not match", "warning")
+           return False
 
-        if dim == 3:
+       # Check whether list of dirs or the feature vectors themselves
+       if type(vectorsDirs[0]) == "str":
+           # Loading the feature vectors
+           X, y = [], []
+           prettyPrint("Loading feature vectors")
+           for d in vectorsDirs:
+               for vector in glob.glob("%s/*.%s" % (d, fileExt)):
+                   x = eval(open(vector).read())
+                   X.append(x)
+                   y.append(vectorsDirs.index(d))
+       else:
+           # Processing the feature vectors
+           X, y = [], []
+           for c in vectorsDirs:
+               for x in c:
+                   X.append(x)
+                   y.append(vectorsDirs.index(c))
+
+
+       prettyPrint("Successfully loaded %s vectors" % len(X))
+       # Reduce dimensionality
+       prettyPrint("Reducing the dimensionality of loaded vectors")
+       reductionModel = TSNE(n_components=targetDim, random_state=0) if reductionAlgorithm == "tsne" else PCA(n_components=targetDim)
+       # Apply transformation
+       X_new = reductionModel.fit_transform(X)
+
+       # Build and save figure
+       if targetDim == 3:
             prettyPrint("Only 2-dimensional plots are currently supported for \"matplotlib\"", "warning")
             return False
-        else:
-            x1_class1, x1_class2, x2_class1, x2_class2 = [], [], [], []
-            for index in range(len(X)):
-                if y[index] == 0:
-                    x1_class1.append(X_new[index][0])
-                    x2_class1.append(X_new[index][1])
-                else:
-                    x1_class2.append(X_new[index][0])
-                    x2_class2.append(X_new[index][1])
+       else:
+           if latexStyle:
+               font = {'family':'sans-serif', 'sans-serif':['Helvetica']}
+               rc('font', **font)
+               rc('text', usetex=True)
+               plt.xlabel("$x_1$", **{"fontname": "Helvetica"})
+               plt.ylabel("$x_2$", **{"fontname": "Helvetica"})
 
-            plt.scatter(x1_class1, x2_class1, c=getRandomHexColor(), alpha=0.5, marker=getRandomMarker(), label=customLabels[0])
-            plt.scatter(x1_class2, x2_class2, c=getRandomHexColor(), alpha=0.5, marker=getRandomMarker(), label=customLabels[1])
-            plt.xlabel("x1")
-            plt.ylabel("x2")
-            plt.tick_params(
-                axis='x',          # changes apply to the x-axis
-                which='both',      # both major and minor ticks are affected
-                bottom=True,       # ticks along the bottom edge are on
-                top=False,         # ticks along the top edge are off
-                labelbottom=False)
-            plt.tick_params(
-                axis='y',          # changes apply to the y-axis
-                which='both',      # both major and minor ticks are affected
-                left=True,         # ticks along the left edge are on
-                top=False,         # ticks along the top edge are off
-                labelleft=False)
-            plt.legend(loc='best')
-            #plt.show()
-    
-            plt.savefig('Visualization_%s.pdf' % figTitle.replace(" ", "_").lower())
-            plt.savefig('Visualization_%s.pgf' % figTitle.replace(" ", "_").lower())
+           else:
+               plt.xlabel("x1")
+               plt.ylabel("x2")
+
+           plt.grid(zorder=0, linestyle="--") # Make dashed grid lines and send to background
+
+           # And away we go
+           prettyPrint("Building scatter plot")
+           for c in classNames:
+               classX1, classX2, className = [], [], c
+               for index in range(len(X_new)):
+                   if y[index] == classNames.index(c):
+                       classX1.append(float(X_new[index][0]))
+                       classX2.append(float(X_new[index][1]))
+
+               label = "\\texttt{%s}" if latexStyle else "%s" 
+               plt.scatter(classX1, classX2, c=classColors[classNames.index(c)], alpha=classOpacity[classNames.index(c)], marker=classMarkers[classNames.index(c)], label=label % className, linewidths=0.5, edgecolors="#000000", zorder=3)
+
+           #plt.tick_params(
+           #     axis='x',          # changes apply to the x-axis
+           #     which='both',      # both major and minor ticks are affected
+           #     bottom=True,       # ticks along the bottom edge are on
+           #     top=False,         # ticks along the top edge are off
+           #     labelbottom=False)
+           #plt.tick_params(
+           #     axis='y',          # changes apply to the y-axis
+           #     which='both',      # both major and minor ticks are affected
+                #left=True,         # ticks along the left edge are on
+                #top=False,         # ticks along the top edge are off
+           plt.legend(loc='best')
+           #plt.show()
+
+           plt.savefig('Visualization_%s.pdf' % figTitle.replace(" ", "_").lower())
+           plt.savefig('Visualization_%s.pgf' % figTitle.replace(" ", "_").lower())
+
 
     except Exception as e:
         prettyPrintError(e)
         return False
 
     return True
-
-
 
