@@ -16,6 +16,8 @@ The current implementation depends on the following tools:
 
 ## Maat's ML-based Labeling Strategies
 
+![Maat's Process](https://github.com/tum-i22/Maat/blob/master/figures/Maat_Process.png "Maat's Process")
+
 Maat, mines VirusTotal scan reports to build ML-based labeling strategies. As seen in figure above, Maat starts by
 analyzing the VirusTotal scan reports of apps in the training dataset that were reanalyzed and downloaded at different points in time (i.e., t<sub>0</sub> , t<sub>1</sub> ,..., t<sub>m</sub>). In phase (1) we designate the VirusTotal scanners that achieve an average overall correctness rate of at least 0.90 between (**t<sub>0</sub>**) and September (**t<sub>m</sub>**) as the most correct scanners. Maat also finds the scanners that changed their verdicts at most 10% of the time (i.e., were stable 90% of the time), are considered. The output of this phase is an intersection of the most correct and stable VirusTotal scanners.
 
