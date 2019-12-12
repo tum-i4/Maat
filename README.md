@@ -77,7 +77,7 @@ The following list enumerates the selected naive features, viz. the verdicts of 
 * ```SymantecMobileInsight```
 * ```Trustlook```
 
-## [Maat's Hyperparameter Estimation](#HyperparameterEstimation)
+### [Maat's Hyperparameter Estimation](#HyperparameterEstimation)
 
 To train the best-performing random forests that constitute the ML-based labeling strategies, Maat uses the techniques of grid search and random(ized) search to estimate the hyperparameters of the decision trees in those forests. We used 10-Fold Cross Validation to train random forests of 100 decision trees and varied the following parameters as follows:
 
