@@ -47,6 +47,7 @@ The following list enumerates the engineered features extracted from the ```Viru
   * ```ESET-NOD32```
   * ```Fortinet```
   * ```Ikarus```
+  * ```K7GW```
   * ```MAX``` (TrendMicro Maximum Security)
   * ```McAfee```
   * ```NANO-Antivirus```
