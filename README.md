@@ -36,9 +36,13 @@ The output of phase (4) is a random forest that takes a vector of numerical feat
 
 The following list enumerates the engineered features extracted from the ```VirusTotal``` scan reports of apps in our training dataset. The order of features in the list mimics the order of every feature in the feature vector.
 
-* The verdicts (i.e., 1 for malicious, 0 for benign, and -1 for unknown), given by the most correct ```VirusTotal``` scanners as of September 27th, 2019. See **User Manual** for information about how to retrieve the "most correct" scanners:  
+* The verdicts (i.e., 1 for malicious, 0 for benign, and -1 for unknown), given by the intersection of the most correct **and** stable ```VirusTotal``` scanners based on the scan reports of apps in our __AMD+GPlay__ dataset gathered between October 2018 and September 2019. See **User Manual** for information about how to retrieve the "most correct" and "most stable" scanners:  
+  * ```AhnLab-V3```
   * ```Avira```
+  * ```Babable```
   * ```CAT-QuickHeal```
+  * ```Comodo```
+  * ```Cyren```
   * ```DrWeb```
   * ```ESET-NOD32```
   * ```Fortinet```
@@ -90,37 +94,53 @@ To train the best-performing random forests that constitute the ML-based labelin
 
 ## User Manual 
 
-Maat is implemented as Python API that is meant to analyze and manipulate ```VirusTotal``` scan reports. The following calls exhibit how this API can be used to calculate some interesting results from a collection of scan reports. The format of a scan report is nothing but a string representation of the ```JSON``` report you can download from ```VirusTotal```'s API. We assume that the report such scan reports has a ```.report``` extension. Reports are loaded within the API using the call ```eval(open([path_to_report_file]).read())```.
+Maat is implemented as Python API that is meant to analyze and manipulate ```VirusTotal``` scan reports. The following calls exhibit how this API can be used to calculate some interesting results from a collection of scan reports. The format of a scan report is nothing but a string representation of the ```JSON``` report you can download from ```VirusTotal```'s API. We assume that the report such scan reports has a ```.report``` extension. Reports are loaded within the API using the call ```eval(open([path_to_report_file]).read())```. The following commands are meant to be run from a python shell, such as ```ipython```. 
 
 ### Calculate Scanners' Detection Rates
 
-Currently this method is implemented to support apps in the [AMD](http://amd.arguslab.org/) dataset because it displays the detection rates grouped by the malware type, which is supported by AMD.
+Currently this method is implemented to support apps in the [AMD](http://amd.arguslab.org/) dataset because it displays the detection rates grouped by the malware type and family, which is provided by AMD. The ```vtReportsDir``` parameter is a string depicting the path to the directory containing the scan reports downloaded from ```VirusTotal```.
 
 ```
-from Maat.mining import malignancy
-malignancy.getAMDDetectionRates(vtReportsDir, generateLatexTable)
+$> from Maat.mining import malignancy
+$> malignancy.getAMDDetectionRates(vtReportsDir, generateLatexTable)
 ```
 
-### Get Scanners' Correctness Rates
+### Get Scanners' Correctness Scores
 
-The ```groundTruth``` parameter depicts a dictionary with keys being the ```SHA256``` hash of each app and values being a binary label (i.e., 0.0 for benign and 1.0 for malicious). The parameter ```hashToTypeMapping``` is another dictionary with the same keys as the former dictionary and values of strings depicting the malware type as reported by AMD.
+This methods calculates the correctness scores of different scanners at **one** point in time. The correctness rate is based on Mohaisen et al.'s definintion in their [paper](https://alrawi.io/static/papers/avmeter-dimva.pdf): "For a given dataset, the correctness of an antiviral scanner is the number of correct detections normalized by the size of the dataset."
 
-```
-from Maat.mining import correctness
-correctness.getCorrectnessByType(datasetDir, vtReportsDir, groundTruth, hashToTypeMapping) # Only hash to type, not to type and family
-```
-
-### Get Scanners' Correctness Rates (Over a period of time)
+The ```vtReportsDir``` is used in the same manner as with the previous call. The ```groundTruth``` parameter depicts a dictionary with keys being the ```SHA256``` hash of each app and values being a binary label (i.e., 0.0 for benign and 1.0 for malicious). The parameter ```hashToTypeMapping``` is another dictionary with the same keys as the former dictionary and values of strings depicting the malware type as reported by AMD.
 
 ```
-from Maat.mining import correctness
-correctness.getCorrectnessOverTime(datasetDir, vtReportsDirs, groundTruth, generateLinePlot=True, plotScanners=["Avira", "McAfee", ...])
-correctness.getMostCorrectScannersOverTime(datasetDir, vtReportsDirs, groundTruth, averageCorrectness=0.9, generateLinePlots=True, plotScanners=["Avira", "McAfee", ...])
+$> from Maat.mining import correctness
+$> correctness.getCorrectnessByType(datasetDir, vtReportsDir, groundTruth, hashToTypeMapping) # Only hash to type, not to type and family
+```
+
+### Get Scanners' Correctness Scores (Over a period of time)
+
+In this case, since we are calculating the scores over a period of time, the ```vtReportsDirs``` parameter is either a list of strings, each of which depicting the path to the scan reports downloaded at some point in time (e.g., April 14th, 2019), or a string with a pattern that all directories have (e.g., ../data/vt_reports_\*)
+
+```
+$> from Maat.mining import correctness
+$> correctness.getCorrectnessOverTime(datasetDir, vtReportsDirs, groundTruth, generateLinePlot=True, plotScanners=["Avira", "McAfee", ...])
+
+# To get the list of most correct scanners, use this method
+
+$> correctness.getMostCorrectScannersOverTime(datasetDir, vtReportsDirs, groundTruth, averageCorrectness=0.9, generateLinePlots=True, plotScanners=["Avira", "McAfee", ...])
+```
+
+### Get Scanners' Certainty Scores (Over a period of time)
+
+This method calculates the __certainty___ score of different ```VirusTotal``` scanners as a measure of the stability of the verdicts they give to apps. The certainty score divides the occurences of the most common label given by a scanner to an app by the total number of labels. For example, if a scanner (![signa](http://www.sciweavers.org/upload/Tex2Img_1579079559/render.png)) gave the following labels ```labels = [True, False, True, True]``` over four points in time (i.e., True = Detected (malicious)) to an app  (![alpha](http://www.sciweavers.org/upload/Tex2Img_1579079668/render.png)), the certainty score is calculated as ```labels.count(max(labels)/len(labels)```, which should be 0.75. That is, the scanner is certain about its labels 75\% of the time, regardless of their correctness.  
+
+```
+$> from Maat.mining import evolution
+$> evolution.getStableScanners(datasetDir, vtReportsDirs, scannersToConsider=["AVG", "ESET-NOD32",...], stabilityThreshold=0.90)
 ```
 
 ### Experiment 1: Accurate Labeling 
 
-The Maat API can be used to build tools to train ML-based labeling strategies to label Android apps according to their ```VirusTotal``` scan reports. We wrote a tool called ```maat_tool.py``` that supports three types of experiments. Running the command ```python maat_tool.py --help``` returns the following:
+The Maat API can be used to build tools to train ML-based labeling strategies to label Android apps according to their ```VirusTotal``` scan reports. We wrote a tool called ```maat_tool.py``` that supports three types of experiments. Running the command ```python maat_tool.py --help``` in any shell returns the following:
 
 ```
 usage: Maat_tool.py [-h] -t {naive_experiments,advanced_experiments}
@@ -267,11 +287,11 @@ The malware types we consider in so far can be found in the Python module __Maat
 
 ### [Reverse Engineering Apps](#Reverse)
 
-The following steps depicts the process we adopted to manually analyze and label apps in our test datasets. Given an app (![equation](http://www.sciweavers.org/tex2img.php?eq=\alpha&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=)), we:
+The following steps depicts the process we adopted to manually analyze and label apps in our test datasets. Given an app (![alpha](http://www.sciweavers.org/upload/Tex2Img_1579079668/render.png)), we:
 * Install (![equation](http://www.sciweavers.org/tex2img.php?eq=\alpha&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=)) on a rooted Android Virtual Device (AVD) containing the [```Xposed```](http://api.xposed.info/reference/packages.html) framework and the API call monitoring tool [```droidmon```](https://github.com/idanr1986/droidmon).
-* run and interact with (![equation](http://www.sciweavers.org/tex2img.php?eq=\alpha&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=)) on the AVD and monitor the API calls it issues during runtime.
-* If app crashes or no malicious behavior is noticed: decompile (![equation](http://www.sciweavers.org/tex2img.php?eq=\alpha&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=)) with [```Jadx```](https://github.com/skylot/jadx) and inspect its source code.
-* If no traces of malicious code are found, disassemble (![equation](http://www.sciweavers.org/tex2img.php?eq=\alpha&bc=White&fc=Black&im=jpg&fs=12&ff=arev&edit=)) with [```Apktool```](https://ibotpeaches.github.io/Apktool/) and reverse engineer its ```Smali``` code.
+* run and interact with (![alpha](http://www.sciweavers.org/upload/Tex2Img_1579079668/render.png)) on the AVD and monitor the API calls it issues during runtime.
+* If app crashes or no malicious behavior is noticed: decompile (![alpha](http://www.sciweavers.org/upload/Tex2Img_1579079668/render.png)) with [```Jadx```](https://github.com/skylot/jadx) and inspect its source code.
+* If no traces of malicious code are found, disassemble (![alpha](http://www.sciweavers.org/upload/Tex2Img_1579079668/render.png)) with [```Apktool```](https://ibotpeaches.github.io/Apktool/) and reverse engineer its ```Smali``` code.
 * If no traces of malicious code are found, disassemble the shared object libraries used by ($\alpha$) using [```Gidhra```](https://github.com/NationalSecurityAgency/ghidra) and inspect ```C/C++``` code.
 * If no traces of malicious code are found, provisionally deem an app as benign and check ```VirusTotal``` regarding the app's status.
 * If ```VirusTotal``` report gives a total of _zero_ positives, deem app as benign. Otherwise, inspect the scanners deeming app as malicious, the label they give to an app (e.g., **Riskware**), and the details inside the scan report.
